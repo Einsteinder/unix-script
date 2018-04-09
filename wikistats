@@ -1,0 +1,114 @@
+#!/bin/sh
+#Program:
+#	Analyse wiki
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
+export PATH
+
+
+bfunc(){
+	echo `gzcat "${1}" | awk '/'"^${2}[\. ]"'/ { sum += $NF; } END { print sum ; }'`
+
+}
+ffunc(){
+	echo `gzcat "${1}" | grep "^${2}[\. ]" |  awk '{ print $2 " " $(NF - 1) }' | sort -nrk 2 | head -n 1|cut -d ' ' -f 1`
+
+}
+rfunc(){
+	echo `gzcat "${1}" | awk ''"/^${2}[\. ]/"' { sum += $(NF - 1); } END { print sum / 3600 ; }' OFMT="%3.2f"`
+
+}
+lfunc(){
+	echo `gzcat "${1}" | awk '/'"^${2}[\. ]"'/ {s = $NF / $(NF - 1);
+	if (s > l) { l = s; largest = $2; }}
+	END { print largest; }'`
+}
+ufunc(){
+	echo `gzcat "${1}" | grep "^${2}[\. ]" | wc -l`
+
+}
+
+b=false 
+f=false
+l=false
+r=false
+u=false
+h=false
+
+while getopts "d:blfruh" o; do
+    case "${o}" in
+        d)
+            d=${OPTARG}
+            ;;
+
+        b)
+	    b=true
+            ;;
+	f)
+	    f=true
+	    ;;
+	l)
+	     l=true
+	     ;;
+	r)
+	    r=true
+	    ;;
+	u)
+	    u=true
+	    ;;
+	h)
+	    h=true
+	    ;;
+
+    esac
+done
+
+
+shift $((OPTIND-1))
+
+
+if [ "${d}" = "all" ] ;then
+	d=.*
+fi
+
+if [ -z "${d}" ]; then
+	d=en
+fi
+
+
+if [ ${b} = true ] ; then 
+	bfunc "$1" "${d}"
+fi
+
+if [ ${h} = true ] ; then
+	echo " -b           only print 'total bytes' stats
+ -d <domain>  if not specified, default to 'en'
+              note: the special domain 'all' is also valid
+ -f           only print 'most frequent' stats
+ -h           print this help and exit
+ -l           only print 'largest object' stats
+ -r           only print 'requests per second' stats
+ -u           only print 'unique objects' stats"
+fi
+if [ ${r} = true ] ; then
+	rfunc "$1" "${d}"
+fi
+
+if [ ${u} = true ] ; then
+	ufunc "$1" "${d}"
+fi
+
+if [ ${l} = true ] ; then
+       lfunc "$1" "${d}"
+fi
+
+if [ ${f} = true ] ; then
+	ffunc "$1" "${d}"
+fi
+
+if [ ${h} = false ] && [ ${f} = false ] && [ ${l} = false ] && [ ${u} = false ] && [ ${r} = false ] && [ ${b} = false ] ; then
+	ufunc "$1" "${d}"
+	ffunc "$1" "${d}"
+	bfunc "$1" "${d}"
+	rfunc "$1" "${d}"
+	lfunc "$1" "${d}"
+fi
